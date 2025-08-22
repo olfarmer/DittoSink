@@ -1,0 +1,4 @@
+name: ditto-sink
+description: Write digital twin data in the ditto live channel
+sinkClass: de.uniulm.ditto.DittoSink
+sinkConfigClass: de.uniulm.ditto.DittoSinkConfig
