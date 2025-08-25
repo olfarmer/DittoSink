@@ -29,13 +29,32 @@ public class DittoSinkConfig implements Serializable {
             help = "")
     String websocketEndpoint;
 
-
     public static DittoSinkConfig load(Map<String, Object> map) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         return mapper.readValue(mapper.writeValueAsString(map), DittoSinkConfig.class);
     }
 
-    public boolean allRequiredPresent() {
-        return !Strings.isNullOrEmpty(dittoUsername) && !Strings.isNullOrEmpty(dittoPassword) && Strings.isNullOrEmpty(websocketEndpoint);
+    public String getDittoUsername() {
+        return dittoUsername;
+    }
+
+    public void setDittoUsername(String dittoUsername) {
+        this.dittoUsername = dittoUsername;
+    }
+
+    public String getDittoPassword() {
+        return dittoPassword;
+    }
+
+    public void setDittoPassword(String dittoPassword) {
+        this.dittoPassword = dittoPassword;
+    }
+
+    public String getWebsocketEndpoint() {
+        return websocketEndpoint;
+    }
+
+    public void setWebsocketEndpoint(String websocketEndpoint) {
+        this.websocketEndpoint = websocketEndpoint;
     }
 }

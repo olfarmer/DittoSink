@@ -1,0 +1,4 @@
+configs:
+  dittoUsername: "ditto"
+  dittoPassword: "ditto"
+  websocketEndpoint: "ws://nginx:80/ws/2"

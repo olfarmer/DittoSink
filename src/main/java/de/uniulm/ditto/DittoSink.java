@@ -39,10 +39,6 @@ public class DittoSink implements Sink<byte[]> {
     public void open(Map<String, Object> config, SinkContext sinkContext) throws Exception {
         DittoSinkConfig dittoSinkConfig = DittoSinkConfig.load(config);
 
-        if (!dittoSinkConfig.allRequiredPresent()) {
-            throw new IllegalArgumentException("All required properties are not present");
-        }
-
         dittoClient = openDittoClient(dittoSinkConfig);
     }
 
@@ -79,7 +75,9 @@ public class DittoSink implements Sink<byte[]> {
 
     @Override
     public void close() throws Exception {
-        dittoClient.destroy();
+        if(dittoClient != null) {
+            dittoClient.destroy();
+        }
     }
 
     private DittoClient openDittoClient(DittoSinkConfig config) {
@@ -122,7 +120,7 @@ public class DittoSink implements Sink<byte[]> {
     private boolean allRequiredPropertiesPresent(Map<String, String> properties) {
         for (RequiredProperties requiredProperty : RequiredProperties.values()) {
             if (!properties.containsKey(requiredProperty.propertyName)) {
-                logger.warn("Required property {} is not present", requiredProperty);
+                logger.error("Required property {} is not present", requiredProperty);
                 return false;
             }
         }

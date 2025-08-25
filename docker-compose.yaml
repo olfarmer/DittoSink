@@ -6,7 +6,6 @@ services:
     environment:
       PULSAR_ADVERTISED_ADDRESS: "127.0.0.1"
       PULSAR_PREFIX_functionsWorkerEnabled: "true"
-      DITTO_WEBSOCKET_ENDPOINT: "ws://nginx:80/ws/2"
       BK_journalSyncData: false
 
     ports:
