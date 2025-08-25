@@ -1,12 +1,12 @@
 package de.uniulm.ditto;
 
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.Map;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import org.apache.pulsar.io.core.annotations.FieldDoc;
+
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.Map;
 
 public class DittoSinkConfig implements Serializable {
     @FieldDoc(

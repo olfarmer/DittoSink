@@ -1,6 +1,5 @@
 package de.uniulm.ditto;
 
-import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.functions.api.Record;
 import org.apache.pulsar.io.core.Sink;
 import org.apache.pulsar.io.core.SinkContext;
@@ -21,7 +20,6 @@ import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.time.temporal.TemporalAccessor;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -41,7 +39,7 @@ public class DittoSink implements Sink<byte[]> {
     public void open(Map<String, Object> config, SinkContext sinkContext) throws Exception {
         DittoSinkConfig dittoSinkConfig = DittoSinkConfig.load(config);
 
-        if(!dittoSinkConfig.allRequiredPresent()) {
+        if (!dittoSinkConfig.allRequiredPresent()) {
             throw new IllegalArgumentException("All required properties are not present");
         }
 
@@ -50,19 +48,18 @@ public class DittoSink implements Sink<byte[]> {
 
     @Override
     public void write(Record<byte[]> record) throws Exception {
-        Map<String ,String> properties = record.getProperties();
+        Map<String, String> properties = record.getProperties();
         String messageId = record.getMessage().isPresent() ? record.getMessage().get().getMessageId().toString() : "";
 
-        if(!allRequiredPropertiesPresent(properties)) {
+        if (!allRequiredPropertiesPresent(properties)) {
             logger.warn("Ignoring record with id {}", messageId);
             return;
         }
 
 
-
         ThingId thingId = ThingId.of(properties.get(RequiredProperties.THING_ID.propertyName));
-        String featureId  = properties.get(RequiredProperties.FEATURE_ID.propertyName);
-        String subject =  properties.get(RequiredProperties.SUBJECT.propertyName);
+        String featureId = properties.get(RequiredProperties.FEATURE_ID.propertyName);
+        String subject = properties.get(RequiredProperties.SUBJECT.propertyName);
         OffsetDateTime eventTimeOffset = OffsetDateTime.of(LocalDateTime.ofEpochSecond(record.getEventTime().orElse(0L), 0, ZoneOffset.UTC), ZoneOffset.UTC);
 
         dittoClient
@@ -74,7 +71,7 @@ public class DittoSink implements Sink<byte[]> {
                 .timestamp(eventTimeOffset)
                 .payload(record.getValue())
                 .send((message, error) -> {
-                    if(error != null) {
+                    if (error != null) {
                         logger.error("Received an error from Ditto while sending a message with the id {}", messageId, error);
                     }
                 });
