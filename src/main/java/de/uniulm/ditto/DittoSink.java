@@ -17,6 +17,7 @@ import org.eclipse.ditto.things.model.ThingId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -65,8 +66,9 @@ public class DittoSink implements Sink<byte[]> {
                 .featureId(featureId)
                 .subject(subject)
                 .timestamp(eventTimeOffset)
-                .payload(record.getValue())
-                .send((message, error) -> {
+                .payload(ByteBuffer.wrap(record.getValue()))
+                .contentType("application/octet-stream")
+                .send(ByteBuffer.class, (message, error) -> {
                     if (error != null) {
                         logger.error("Received an error from Ditto while sending a message with the id {}", messageId, error);
                     }
