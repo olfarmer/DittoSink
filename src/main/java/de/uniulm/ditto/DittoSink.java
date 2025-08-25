@@ -1,5 +1,6 @@
 package de.uniulm.ditto;
 
+import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.functions.api.Record;
 import org.apache.pulsar.io.core.Sink;
 import org.apache.pulsar.io.core.SinkContext;
@@ -13,9 +14,14 @@ import org.eclipse.ditto.client.configuration.WebSocketMessagingConfiguration;
 import org.eclipse.ditto.client.messaging.AuthenticationProviders;
 import org.eclipse.ditto.client.messaging.MessagingProvider;
 import org.eclipse.ditto.client.messaging.MessagingProviders;
+import org.eclipse.ditto.things.model.ThingId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.TemporalAccessor;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -44,7 +50,34 @@ public class DittoSink implements Sink<byte[]> {
 
     @Override
     public void write(Record<byte[]> record) throws Exception {
+        Map<String ,String> properties = record.getProperties();
+        String messageId = record.getMessage().isPresent() ? record.getMessage().get().getMessageId().toString() : "";
 
+        if(!allRequiredPropertiesPresent(properties)) {
+            logger.warn("Ignoring record with id {}", messageId);
+            return;
+        }
+
+
+
+        ThingId thingId = ThingId.of(properties.get(RequiredProperties.THING_ID.propertyName));
+        String featureId  = properties.get(RequiredProperties.FEATURE_ID.propertyName);
+        String subject =  properties.get(RequiredProperties.SUBJECT.propertyName);
+        OffsetDateTime eventTimeOffset = OffsetDateTime.of(LocalDateTime.ofEpochSecond(record.getEventTime().orElse(0L), 0, ZoneOffset.UTC), ZoneOffset.UTC);
+
+        dittoClient
+                .live()
+                .message()
+                .from(thingId)
+                .featureId(featureId)
+                .subject(subject)
+                .timestamp(eventTimeOffset)
+                .payload(record.getValue())
+                .send((message, error) -> {
+                    if(error != null) {
+                        logger.error("Received an error from Ditto while sending a message with the id {}", messageId, error);
+                    }
+                });
     }
 
     @Override
@@ -87,6 +120,16 @@ public class DittoSink implements Sink<byte[]> {
             logger.error("Error connecting to DittoClient", e);
             throw new RuntimeException(e);
         }
+    }
+
+    private boolean allRequiredPropertiesPresent(Map<String, String> properties) {
+        for (RequiredProperties requiredProperty : RequiredProperties.values()) {
+            if (!properties.containsKey(requiredProperty.propertyName)) {
+                logger.warn("Required property {} is not present", requiredProperty);
+                return false;
+            }
+        }
+        return true;
     }
 
 }
