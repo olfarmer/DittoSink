@@ -68,11 +68,7 @@ public class DittoSink implements Sink<byte[]> {
                 .timestamp(eventTimeOffset)
                 .payload(ByteBuffer.wrap(record.getValue()))
                 .contentType("application/octet-stream")
-                .send(ByteBuffer.class, (message, error) -> {
-                    if (error != null) {
-                        logger.error("Received an error from Ditto while sending a message with the id {}", messageId, error);
-                    }
-                });
+                .send();
     }
 
     @Override
