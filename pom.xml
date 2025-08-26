@@ -6,7 +6,7 @@
 
     <groupId>de.uni-ulm</groupId>
     <artifactId>DittoSink</artifactId>
-    <version>0.1-BETA</version>
+    <version>0.1.1-BETA</version>
     <packaging>nar</packaging>
 
     <distributionManagement>

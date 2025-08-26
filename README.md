@@ -8,7 +8,7 @@ An Apache Pulsar Eclipse Ditto sink.
 3. Adjust the config in /resources/pulsar/connectors/DittoSinkConfig.yaml
 4. Inside the broker container run
 
-```pulsar-admin sinks create --name ditto-sink --classname de.uniulm.ditto.DittoSink --archive file:///pulsar/connectors/DittoSink-0.1-BETA.nar --inputs test --sink-config-file /pulsar/connectors/DittoSinkConfig.yaml```
+```pulsar-admin sinks create --name ditto-sink --classname de.uniulm.ditto.DittoSink --archive file:///pulsar/connectors/DittoSink-0.1.1-BETA.nar --inputs test --sink-config-file /pulsar/connectors/DittoSinkConfig.yaml```
 
 to create the ditto sink
 
