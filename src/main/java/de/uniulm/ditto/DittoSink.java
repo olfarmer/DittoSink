@@ -10,6 +10,7 @@ import org.eclipse.ditto.client.DittoClient;
 import org.eclipse.ditto.client.DittoClients;
 import org.eclipse.ditto.client.configuration.BasicAuthenticationConfiguration;
 import org.eclipse.ditto.client.configuration.WebSocketMessagingConfiguration;
+import org.eclipse.ditto.client.live.messages.MessageSender;
 import org.eclipse.ditto.client.messaging.AuthenticationProviders;
 import org.eclipse.ditto.client.messaging.MessagingProvider;
 import org.eclipse.ditto.client.messaging.MessagingProviders;
@@ -55,16 +56,24 @@ public class DittoSink implements Sink<byte[]> {
 
 
         ThingId thingId = ThingId.of(properties.get(RequiredProperties.THING_ID.propertyName));
-        String featureId = properties.get(RequiredProperties.FEATURE_ID.propertyName);
+        String featureId = properties.getOrDefault("featureId", null);
         String subject = properties.get(RequiredProperties.SUBJECT.propertyName);
         OffsetDateTime eventTimeOffset = OffsetDateTime.of(LocalDateTime.ofEpochSecond(record.getEventTime().orElse(0L), 0, ZoneOffset.UTC), ZoneOffset.UTC);
 
-        dittoClient
+        var builder = dittoClient
                 .live()
                 .message()
-                .from(thingId)
-                .featureId(featureId)
-                .subject(subject)
+                .from(thingId);
+
+
+        MessageSender.SetSubject<Object> nextBuilder = builder;
+
+        // Feature is optional
+        if (featureId != null) {
+            nextBuilder = builder.featureId(featureId);
+        }
+
+        nextBuilder.subject(subject)
                 .timestamp(eventTimeOffset)
                 .payload(ByteBuffer.wrap(record.getValue()))
                 .contentType("application/octet-stream")
