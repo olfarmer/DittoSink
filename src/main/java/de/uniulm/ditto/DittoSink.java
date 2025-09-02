@@ -10,7 +10,6 @@ import org.eclipse.ditto.client.DittoClient;
 import org.eclipse.ditto.client.DittoClients;
 import org.eclipse.ditto.client.configuration.BasicAuthenticationConfiguration;
 import org.eclipse.ditto.client.configuration.WebSocketMessagingConfiguration;
-import org.eclipse.ditto.client.live.messages.MessageSender;
 import org.eclipse.ditto.client.messaging.AuthenticationProviders;
 import org.eclipse.ditto.client.messaging.MessagingProvider;
 import org.eclipse.ditto.client.messaging.MessagingProviders;
@@ -18,20 +17,16 @@ import org.eclipse.ditto.things.model.ThingId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @Connector(
         name = "ditto-sink",
         type = IOType.SINK,
-        help = "This Sink can be use to route messages from Pulsar to the Eclipse Ditto live messages. The necessary " +
+        help = "This Sink can be use to update attributes in features of Eclipse Ditto things. The necessary " +
                 "metadata has to be set in the record properties.",
         configClass = DittoSinkConfig.class)
-public class DittoSink implements Sink<byte[]> {
+public class DittoSink implements Sink<String> {
 
     private static final Logger logger = LoggerFactory.getLogger(DittoSink.class);
 
@@ -45,7 +40,7 @@ public class DittoSink implements Sink<byte[]> {
     }
 
     @Override
-    public void write(Record<byte[]> record) throws Exception {
+    public void write(Record<String> record) throws Exception {
         Map<String, String> properties = record.getProperties();
         String messageId = record.getMessage().isPresent() ? record.getMessage().get().getMessageId().toString() : "";
 
@@ -56,28 +51,18 @@ public class DittoSink implements Sink<byte[]> {
 
 
         ThingId thingId = ThingId.of(properties.get(RequiredProperties.THING_ID.propertyName));
-        String featureId = properties.getOrDefault("featureId", null);
-        String subject = properties.get(RequiredProperties.SUBJECT.propertyName);
-        OffsetDateTime eventTimeOffset = OffsetDateTime.of(LocalDateTime.ofEpochSecond(record.getEventTime().orElse(0L), 0, ZoneOffset.UTC), ZoneOffset.UTC);
+        String featureId = properties.get(RequiredProperties.FEATURE_ID.propertyName);
+        String property = properties.get(RequiredProperties.PROPERTY.propertyName);
 
-        var builder = dittoClient
-                .live()
-                .message()
-                .from(thingId);
-
-
-        MessageSender.SetSubject<Object> nextBuilder = builder;
-
-        // Feature is optional
-        if (featureId != null) {
-            nextBuilder = builder.featureId(featureId);
-        }
-
-        nextBuilder.subject(subject)
-                .timestamp(eventTimeOffset)
-                .payload(ByteBuffer.wrap(record.getValue()))
-                .contentType("application/octet-stream")
-                .send();
+        dittoClient
+                .twin()
+                .forId(thingId)
+                .forFeature(featureId)
+                .putProperty(property, record.getValue())
+                .exceptionallyAsync(error -> {
+                    logger.error("Error occurred while trying to update the property {} in Feature {} of Thing {}", property, featureId, thingId, error);
+                    return null;
+                });
     }
 
     @Override

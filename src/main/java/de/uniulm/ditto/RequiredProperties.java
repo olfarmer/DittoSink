@@ -2,8 +2,9 @@ package de.uniulm.ditto;
 
 public enum RequiredProperties {
     THING_ID("thingId"),
-    SUBJECT("subject"),
-    ;
+    FEATURE_ID("featureId"),
+    PROPERTY("property");
+
 
 
     public final String propertyName;

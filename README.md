@@ -1,6 +1,7 @@
 # DittoSink
 
-An Apache Pulsar Eclipse Ditto sink.
+An Apache Pulsar Eclipse Ditto sink. It accepts strings that are handled as attribute updates of a thing feature.
+ThingId, FeatureId and property name have to be provided in the message properties.
 
 ## Setup
 
@@ -14,28 +15,18 @@ An Apache Pulsar Eclipse Ditto sink.
 to create the ditto sink
 
 5. Create a thing in Ditto
-6. A test message can be produced by using this command:
-   ```pulsar-client produce test -m messageContent -p "thingId=test" -p "subject=test"```
+6. A test update can be produced by using this command:
+   ```pulsar-client produce theromometerTopic -m 12.4 -p "thingId=factory:theromometer" -p "featureId=temperature" -p "property=degrees"```
 
 ## Requirements for the messages
 
-The following properties are required for messages processed in this sink:
+The following Pulsar message properties are required for an update to be processed in this sink:
 
-1. thingId: The ID of the thing from which the message will be published. (REQUIRED)
-2. subject: The message subject. (REQUIRED)
-3. featureId: The feature ID of the thing with which this message should be associated. (OPTIONAL)
+1. thingId: The ID of the thing of which the attribute will be updated. (REQUIRED)
+2. featureId: The feature ID of the thing with which this message should be associated. (REQUIRED)
+3. property: The name of the property inside the feature that will be updated. (REQUIRED)
 
-Provided the requirements are met, the message will be sent via the 'From' channel.
-For example, the message could be received as follows:
 
-```
-...
-client.live().registerForMessage("ditto-utility", "test", repliableMessage -> {
-    String messagePayload = StandardCharsets.UTF_8.decode(repliableMessage.getRawPayload().orElseThrow()).toString();
-    logger.info("Received message from {}: {}", repliableMessage.getEntityId(), messagePayload);
-});
-client.live().startConsumption();
-```
 
 ## Sink Config
 
