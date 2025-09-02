@@ -79,6 +79,7 @@ public class DittoSink implements Sink<String> {
         stage.whenComplete((a, error) -> {
             if (error != null) {
                 logger.error("Error occurred while trying to update the property {} in Feature {} of Thing {}", property, featureId, thingId, error);
+                record.fail();
             } else {
                 record.ack();
             }
