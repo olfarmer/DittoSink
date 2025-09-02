@@ -1,5 +1,7 @@
 package de.uniulm.ditto;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.io.IOUtils;
 import org.apache.pulsar.functions.api.Record;
 import org.apache.pulsar.io.core.Sink;
 import org.apache.pulsar.io.core.SinkContext;
@@ -13,12 +15,20 @@ import org.eclipse.ditto.client.configuration.WebSocketMessagingConfiguration;
 import org.eclipse.ditto.client.messaging.AuthenticationProviders;
 import org.eclipse.ditto.client.messaging.MessagingProvider;
 import org.eclipse.ditto.client.messaging.MessagingProviders;
+import org.eclipse.ditto.client.twin.TwinFeatureHandle;
+import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.things.model.ThingId;
+import org.eclipse.ditto.wot.model.DataSchemaType;
+import org.eclipse.ditto.wot.model.ThingDescription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 @Connector(
         name = "ditto-sink",
@@ -29,6 +39,7 @@ import java.util.concurrent.CompletableFuture;
 public class DittoSink implements Sink<String> {
 
     private static final Logger logger = LoggerFactory.getLogger(DittoSink.class);
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     private DittoClient dittoClient;
 
@@ -54,15 +65,59 @@ public class DittoSink implements Sink<String> {
         String featureId = properties.get(RequiredProperties.FEATURE_ID.propertyName);
         String property = properties.get(RequiredProperties.PROPERTY.propertyName);
 
-        dittoClient
+
+        DataSchemaType schema = getFeatureType(thingId, featureId, property);
+
+
+        TwinFeatureHandle handle = dittoClient
                 .twin()
                 .forId(thingId)
-                .forFeature(featureId)
-                .putProperty(property, record.getValue())
-                .exceptionallyAsync(error -> {
-                    logger.error("Error occurred while trying to update the property {} in Feature {} of Thing {}", property, featureId, thingId, error);
-                    return null;
-                });
+                .forFeature(featureId);
+
+        CompletionStage<Void> stage = putProperty(handle, property, schema, record.getValue());
+
+        stage.whenComplete((a, error) -> {
+            if (error != null) {
+                logger.error("Error occurred while trying to update the property {} in Feature {} of Thing {}", property, featureId, thingId, error);
+            } else {
+                record.ack();
+            }
+        });
+    }
+
+    private CompletionStage<Void> putProperty(TwinFeatureHandle handle, String property, DataSchemaType schema, String value) {
+        return switch (schema) {
+            case BOOLEAN -> handle.putProperty(property, Boolean.parseBoolean(value));
+            case INTEGER -> handle.putProperty(property, Integer.parseInt(value));
+            case STRING -> handle.putProperty(property, value);
+            case OBJECT, ARRAY -> handle.putProperty(property, JsonObject.of(value));
+            case NUMBER -> handle.putProperty(property, Double.parseDouble(value));
+            case NULL -> handle.putProperty(property, "");
+        };
+    }
+
+    private DataSchemaType getFeatureType(ThingId thingId, String featureId, String propertyName) {
+
+        CompletableFuture<DataSchemaType> returnValue = new CompletableFuture<>();
+
+        dittoClient.twin().forId(thingId).forFeature(featureId).retrieve().whenComplete((feature, y) -> {
+            String url = feature.getDefinition().orElseThrow().getFirstIdentifier().getUrl().orElseThrow().toString();
+            //url = url.replace("nginx:80","localhost:8080"); // TODO: REMOVE!
+
+            try {
+                String jsonString = IOUtils.toString(new URL(url), StandardCharsets.UTF_8);
+                var description = ThingDescription.fromJson(JsonObject.of(jsonString));
+                var wotProperty = description.getProperties().orElseThrow().getProperty(propertyName).orElseThrow();
+
+                DataSchemaType schema = wotProperty.getType().orElseThrow();
+                returnValue.complete(schema);
+            } catch (IOException e) {
+                returnValue.completeExceptionally(e);
+            }
+
+        });
+
+        return returnValue.join();
     }
 
     @Override
