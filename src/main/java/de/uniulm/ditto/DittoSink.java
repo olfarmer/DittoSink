@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -42,6 +43,8 @@ public class DittoSink implements Sink<String> {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private DittoClient dittoClient;
+
+    Map<PropertyIdentifier, DataSchemaType> schemaMap = new HashMap<>();
 
     @Override
     public void open(Map<String, Object> config, SinkContext sinkContext) throws Exception {
@@ -65,9 +68,14 @@ public class DittoSink implements Sink<String> {
         String featureId = properties.get(RequiredProperties.FEATURE_ID.propertyName);
         String property = properties.get(RequiredProperties.PROPERTY.propertyName);
 
+        PropertyIdentifier identifier = new PropertyIdentifier(thingId, featureId, property);
+        DataSchemaType schema;
 
-        DataSchemaType schema = getFeatureType(thingId, featureId, property);
-
+        if (schemaMap.containsKey(identifier)) {
+            schema = schemaMap.get(identifier);
+        } else {
+            schema = getFeatureType(thingId, featureId, property);
+        }
 
         TwinFeatureHandle handle = dittoClient
                 .twin()
@@ -93,7 +101,10 @@ public class DittoSink implements Sink<String> {
             case STRING -> handle.putProperty(property, value);
             case OBJECT, ARRAY -> handle.putProperty(property, JsonObject.of(value));
             case NUMBER -> handle.putProperty(property, Double.parseDouble(value));
-            case NULL -> handle.putProperty(property, "");
+            case NULL -> {
+                logger.warn("Setting '' value for property {} as property DataSchemaType is NULL", property);
+                yield handle.putProperty(property, "");
+            }
         };
     }
 
