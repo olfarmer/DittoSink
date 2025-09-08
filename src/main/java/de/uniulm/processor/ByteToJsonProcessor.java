@@ -97,10 +97,17 @@ public class ByteToJsonProcessor extends AbstractFunction implements Function<by
             outgoingMessageProperties.put(DittoSinkRequiredProperties.FEATURE_ID.propertyName, featureId);
             outgoingMessageProperties.put(DittoSinkRequiredProperties.THING_ID.propertyName, context.getCurrentRecord().getProperties().get(ByteToJsonProcessorRequiredProperties.THING_ID.propertyName));
 
-            context.newOutputMessage(context.getOutputTopic(), Schema.STRING)
+            var future = context.newOutputMessage(context.getOutputTopic(), Schema.STRING)
                     .value(jsonNodeToString(field.getValue()))
                     .properties(outgoingMessageProperties)
                     .sendAsync();
+
+            future.thenAccept(x -> {
+                context.getCurrentRecord().ack();
+            }).exceptionally(x -> {
+                context.getCurrentRecord().fail();
+                return null;
+            });
         }
 
         return null;

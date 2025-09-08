@@ -1,5 +1,6 @@
 package de.uniulm.processor;
 
+import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.TypedMessageBuilder;
 import org.apache.pulsar.functions.api.Context;
@@ -12,6 +13,7 @@ import org.mockito.Mock;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -55,7 +57,7 @@ class ByteToJsonProcessorTest {
         when(mockStringTypedMessageBuilder.key(any())).thenReturn(mockStringTypedMessageBuilder);
         when(mockStringTypedMessageBuilder.eventTime(anyLong())).thenReturn(mockStringTypedMessageBuilder);
         when(mockStringTypedMessageBuilder.value(anyString())).thenReturn(mockStringTypedMessageBuilder);
-        when(mockStringTypedMessageBuilder.sendAsync()).thenReturn(null);
+        when(mockStringTypedMessageBuilder.sendAsync()).thenReturn(CompletableFuture.completedFuture(MessageId.latest));
 
         new ByteToJsonProcessor().process(jsonInput.getBytes(), mockContext);
 
