@@ -1,6 +1,6 @@
 package de.uniulm.ditto;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import de.uniulm.AbstractFunction;
 import org.apache.commons.io.IOUtils;
 import org.apache.pulsar.functions.api.Record;
 import org.apache.pulsar.io.core.Sink;
@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -37,14 +38,17 @@ import java.util.concurrent.CompletionStage;
         help = "This Sink can be use to update attributes in features of Eclipse Ditto things. The necessary " +
                 "metadata has to be set in the record properties.",
         configClass = DittoSinkConfig.class)
-public class DittoSink implements Sink<String> {
+public class DittoSink extends AbstractFunction implements Sink<String> {
 
     private static final Logger logger = LoggerFactory.getLogger(DittoSink.class);
-    private static final ObjectMapper mapper = new ObjectMapper();
 
     private DittoClient dittoClient;
 
     Map<PropertyIdentifier, DataSchemaType> schemaMap = new HashMap<>();
+
+    public DittoSink() {
+        super(Arrays.stream(RequiredProperties.values()).map(x -> x.propertyName).toList());
+    }
 
     @Override
     public void open(Map<String, Object> config, SinkContext sinkContext) throws Exception {
@@ -58,7 +62,7 @@ public class DittoSink implements Sink<String> {
         Map<String, String> properties = record.getProperties();
         String messageId = record.getMessage().isPresent() ? record.getMessage().get().getMessageId().toString() : "";
 
-        if (!allRequiredPropertiesPresent(properties)) {
+        if (!allRequiredPropertiesPresent(properties.keySet())) {
             logger.warn("Ignoring record with id {}", messageId);
             return;
         }
@@ -174,16 +178,6 @@ public class DittoSink implements Sink<String> {
             logger.error("Error connecting to DittoClient", e);
             throw new RuntimeException(e);
         }
-    }
-
-    private boolean allRequiredPropertiesPresent(Map<String, String> properties) {
-        for (RequiredProperties requiredProperty : RequiredProperties.values()) {
-            if (!properties.containsKey(requiredProperty.propertyName)) {
-                logger.error("Required property {} is not present", requiredProperty);
-                return false;
-            }
-        }
-        return true;
     }
 
 }
