@@ -47,7 +47,7 @@ public class DittoSink extends AbstractFunction implements Sink<String> {
     Map<PropertyIdentifier, DataSchemaType> schemaMap = new HashMap<>();
 
     public DittoSink() {
-        super(Arrays.stream(RequiredProperties.values()).map(x -> x.propertyName).toList());
+        super(Arrays.stream(DittoSinkRequiredProperties.values()).map(x -> x.propertyName).toList());
     }
 
     @Override
@@ -68,9 +68,9 @@ public class DittoSink extends AbstractFunction implements Sink<String> {
         }
 
 
-        ThingId thingId = ThingId.of(properties.get(RequiredProperties.THING_ID.propertyName));
-        String featureId = properties.get(RequiredProperties.FEATURE_ID.propertyName);
-        String property = properties.get(RequiredProperties.PROPERTY.propertyName);
+        ThingId thingId = ThingId.of(properties.get(DittoSinkRequiredProperties.THING_ID.propertyName));
+        String featureId = properties.get(DittoSinkRequiredProperties.FEATURE_ID.propertyName);
+        String property = properties.get(DittoSinkRequiredProperties.PROPERTY.propertyName);
 
         PropertyIdentifier identifier = new PropertyIdentifier(thingId, featureId, property);
         DataSchemaType schema;

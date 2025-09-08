@@ -1,6 +1,6 @@
 package de.uniulm.ditto;
 
-public enum RequiredProperties {
+public enum DittoSinkRequiredProperties {
     THING_ID("thingId"),
     FEATURE_ID("featureId"),
     PROPERTY("property");
@@ -9,7 +9,7 @@ public enum RequiredProperties {
 
     public final String propertyName;
 
-    private RequiredProperties(String propertyName) {
+    private DittoSinkRequiredProperties(String propertyName) {
         this.propertyName = propertyName;
     }
 }
