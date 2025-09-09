@@ -24,40 +24,6 @@ public class ByteToJsonProcessor extends AbstractFunction implements Function<by
         super(Arrays.stream(ByteToJsonProcessorRequiredProperties.values()).map(x -> x.propertyName).toList());
     }
 
-    private static Map<String, String> getPropertyNameToFeatureId(Map<String, String> properties) {
-        //Expected input format myJsonFieldName=myFeatureName;mySecondJsonFieldName=mySecondFeatureName
-        String mappings = properties.get(ByteToJsonProcessorRequiredProperties.PROPERTY_FEATURE_MAPPING.propertyName);
-        Map<String, String> propertyNameToFeatureId = new HashMap<>();
-
-        for (var mapping : mappings.split(";")) {
-            var splitMapping = mapping.split("=");
-
-            if (splitMapping.length != 2) {
-                logger.error("Invalid mapping: {}. Aborting.", mapping);
-                return null;
-            }
-            propertyNameToFeatureId.put(splitMapping[0], splitMapping[1]);
-        }
-        return propertyNameToFeatureId;
-    }
-
-    // Converts the value of a JsonNode n to a String. If the value is another JsonObject, the object will be returned.
-    private static String jsonNodeToString(JsonNode n) throws IOException {
-        if (n == null || n.isNull()) {
-            return null;
-        }
-
-        if (n.isValueNode()) {
-            if (n.isTextual()) return n.textValue();
-            if (n.isNumber()) return n.numberValue().toString();
-            if (n.isBoolean()) return n.booleanValue() ? "true" : "false";
-            if (n.isBinary()) return new String(n.binaryValue());
-            return n.asText();
-        } else {
-            return mapper.writeValueAsString(n);
-        }
-    }
-
     @Override
     public void initialize(Context context) throws Exception {
         Function.super.initialize(context);
@@ -111,5 +77,39 @@ public class ByteToJsonProcessor extends AbstractFunction implements Function<by
         }
 
         return null;
+    }
+
+    private static Map<String, String> getPropertyNameToFeatureId(Map<String, String> properties) {
+        //Expected input format myJsonFieldName=myFeatureName;mySecondJsonFieldName=mySecondFeatureName
+        String mappings = properties.get(ByteToJsonProcessorRequiredProperties.PROPERTY_FEATURE_MAPPING.propertyName);
+        Map<String, String> propertyNameToFeatureId = new HashMap<>();
+
+        for (var mapping : mappings.split(";")) {
+            var splitMapping = mapping.split("=");
+
+            if (splitMapping.length != 2) {
+                logger.error("Invalid mapping: {}. Aborting.", mapping);
+                return null;
+            }
+            propertyNameToFeatureId.put(splitMapping[0], splitMapping[1]);
+        }
+        return propertyNameToFeatureId;
+    }
+
+    // Converts the value of a JsonNode n to a String. If the value is another JsonObject, the object will be returned.
+    private static String jsonNodeToString(JsonNode n) throws IOException {
+        if (n == null || n.isNull()) {
+            return null;
+        }
+
+        if (n.isValueNode()) {
+            if (n.isTextual()) return n.textValue();
+            if (n.isNumber()) return n.numberValue().toString();
+            if (n.isBoolean()) return n.booleanValue() ? "true" : "false";
+            if (n.isBinary()) return new String(n.binaryValue());
+            return n.asText();
+        } else {
+            return mapper.writeValueAsString(n);
+        }
     }
 }
