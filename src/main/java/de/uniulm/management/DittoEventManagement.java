@@ -22,7 +22,8 @@ import org.eclipse.ditto.wot.model.ThingDescription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -46,6 +47,12 @@ public class DittoEventManagement extends AbstractFunction implements Function<S
 
     @Override
     public Void process(String input, Context context) throws Exception {
+        try {
+            CreateTopologyForThing(input);
+        } catch (Exception e) {
+            logger.error("Could not create topology for thing {}", input, e);
+        }
+
         return null;
     }
 
@@ -58,8 +65,20 @@ public class DittoEventManagement extends AbstractFunction implements Function<S
 
         dittoClient = DittoClientUtil.openDittoClient(config.get("dittoUsername").toString(), config.get("dittoPassword").toString(), config.get("websocketEndpoint").toString());
 
+        if (config.get("thingIds").toString().isEmpty()) {
+            return;
+        }
+
         String[] initialSubscriptions = config.get("thingIds").toString().split(",");
 
+
+        for (String initialSubscription : initialSubscriptions) {
+            try {
+                CreateTopologyForThing(initialSubscription);
+            } catch (Exception e) {
+                logger.error("Could not create topology for thing {}", initialSubscription, e);
+            }
+        }
 
     }
 
@@ -84,7 +103,7 @@ public class DittoEventManagement extends AbstractFunction implements Function<S
 
         for (String connection : distinctMqttUrls) {
             try {
-                CreateMqttSourceForThing(description, connection, thingId);
+                CreateMqttSourceForThingIfNotExists(connection, thingId);
             } catch (Exception e) {
                 logger.error("Could not create topology for thing {}", stringThingId, e);
             }
@@ -102,6 +121,8 @@ public class DittoEventManagement extends AbstractFunction implements Function<S
 
             try {
                 String definitionUrl = thing.getDefinition().orElseThrow().getUrl().orElseThrow().toString();
+                //TODO: ONLY FOR DEBUGGING
+                definitionUrl = definitionUrl.replace("nginx:80", "localhost:8080");
                 String jsonString = IOUtils.toString(new URL(definitionUrl), StandardCharsets.UTF_8);
                 future.complete(ThingDescription.fromJson(JsonObject.of(jsonString)));
             } catch (Exception e) {
@@ -113,15 +134,21 @@ public class DittoEventManagement extends AbstractFunction implements Function<S
         return future;
     }
 
-    private void CreateMqttSourceForThing(ThingDescription description, String connectionUrl, ThingId thingId) throws MalformedURLException, PulsarAdminException, ExecutionException, InterruptedException {
+    private void CreateMqttSourceForThingIfNotExists(String connectionUrl, ThingId thingId) throws PulsarAdminException, ExecutionException, InterruptedException, URISyntaxException {
         PulsarAdmin admin = context.getPulsarAdmin();
+        String mqttName = "mqtt-" + thingId;
+
+        if (admin.sources().listSources("public", "default").contains(mqttName)) {
+            logger.info("Source {} already exists.", mqttName);
+            return;
+        }
 
         ObjectNode node = mapper.createObjectNode(); // TODO: mqtt source must support this
         node.put("thingId", thingId.toString());
         node.put("propertyFeatureMapping", GetPropertyFeatureMapping(thingId).get());
 
         Map<String, Object> customConfig = new HashMap<>();
-        URL url = new URL(connectionUrl);
+        URI url = new URI(connectionUrl);
         customConfig.put("host", url.getHost());
         customConfig.put("port", url.getPort());
         customConfig.put("serverPath", url.getPath());
@@ -131,7 +158,7 @@ public class DittoEventManagement extends AbstractFunction implements Function<S
         customConfig.put("additionalProperties", node.toString());
 
 
-        String mqttName = "mqtt-" + thingId;
+
 
         SourceConfig config = new SourceConfig();
         config.setConfigs(customConfig);
@@ -172,9 +199,13 @@ public class DittoEventManagement extends AbstractFunction implements Function<S
         return future;
     }
 
-    private void CreateByteToJsonProcessor(ThingDescription description, ThingId thingId) {
+    private void CreateByteToJsonProcessor(ThingId thingId) throws PulsarAdminException {
         FunctionConfig config = new FunctionConfig();
-        //TODO
+        config.setClassName("de.uniulm.processor.ByteToJsonProcessor");
+        config.setInputs(List.of("mqtt-" + thingId));
+        config.setOutput("properties-" + thingId);
+
+        context.getPulsarAdmin().functions().createFunction(config, "file:///pulsar/connectors/ByteToJsonProcessor-1.0-SNAPSHOT.nar");
     }
 
     private List<MqttConnection> GetMqttConnectionsOfThing(ThingDescription description) {
