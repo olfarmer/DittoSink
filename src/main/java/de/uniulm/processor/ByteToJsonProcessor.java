@@ -24,7 +24,7 @@ public class ByteToJsonProcessor extends AbstractFunction implements Function<by
         super(Arrays.stream(ByteToJsonProcessorRequiredProperties.values()).map(x -> x.propertyName).toList());
     }
 
-    private static Map<String, String> getPropertyNameToFeatureId(Map<String, String> properties, JsonNode node) {
+    private static Map<String, String> getPropertyNameToFeatureId(Map<String, String> properties) {
         //Expected input format myJsonFieldName=myFeatureName;mySecondJsonFieldName=mySecondFeatureName
         String mappings = properties.get(ByteToJsonProcessorRequiredProperties.PROPERTY_FEATURE_MAPPING.propertyName);
         Map<String, String> propertyNameToFeatureId = new HashMap<>();
@@ -85,7 +85,7 @@ public class ByteToJsonProcessor extends AbstractFunction implements Function<by
             return null;
         }
 
-        Map<String, String> propertyNameToFeatureId = getPropertyNameToFeatureId(properties, node);
+        Map<String, String> propertyNameToFeatureId = getPropertyNameToFeatureId(properties);
         if (propertyNameToFeatureId == null) return null;
 
         // Each json property will be sent in a new message
