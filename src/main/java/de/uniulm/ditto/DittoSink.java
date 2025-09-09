@@ -1,20 +1,14 @@
 package de.uniulm.ditto;
 
 import de.uniulm.AbstractFunction;
+import de.uniulm.util.DittoClientUtil;
 import org.apache.commons.io.IOUtils;
 import org.apache.pulsar.functions.api.Record;
 import org.apache.pulsar.io.core.Sink;
 import org.apache.pulsar.io.core.SinkContext;
 import org.apache.pulsar.io.core.annotations.Connector;
 import org.apache.pulsar.io.core.annotations.IOType;
-import org.eclipse.ditto.client.DisconnectedDittoClient;
 import org.eclipse.ditto.client.DittoClient;
-import org.eclipse.ditto.client.DittoClients;
-import org.eclipse.ditto.client.configuration.BasicAuthenticationConfiguration;
-import org.eclipse.ditto.client.configuration.WebSocketMessagingConfiguration;
-import org.eclipse.ditto.client.messaging.AuthenticationProviders;
-import org.eclipse.ditto.client.messaging.MessagingProvider;
-import org.eclipse.ditto.client.messaging.MessagingProviders;
 import org.eclipse.ditto.client.twin.TwinFeatureHandle;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.things.model.ThingId;
@@ -54,7 +48,7 @@ public class DittoSink extends AbstractFunction implements Sink<String> {
     public void open(Map<String, Object> config, SinkContext sinkContext) throws Exception {
         DittoSinkConfig dittoSinkConfig = DittoSinkConfig.load(config);
 
-        dittoClient = openDittoClient(dittoSinkConfig);
+        dittoClient = DittoClientUtil.openDittoClient(dittoSinkConfig.dittoUsername, dittoSinkConfig.dittoPassword, dittoSinkConfig.websocketEndpoint);
     }
 
     @Override
@@ -140,43 +134,6 @@ public class DittoSink extends AbstractFunction implements Sink<String> {
     public void close() throws Exception {
         if(dittoClient != null) {
             dittoClient.destroy();
-        }
-    }
-
-    private DittoClient openDittoClient(DittoSinkConfig config) {
-        var authentication = AuthenticationProviders.basic(BasicAuthenticationConfiguration
-                .newBuilder()
-                .username(config.dittoUsername)
-                .password(config.dittoPassword)
-                .build());
-
-        MessagingProvider messagingProvider = MessagingProviders.webSocket(
-                WebSocketMessagingConfiguration
-                        .newBuilder()
-                        .endpoint(config.websocketEndpoint)
-                        .build(), authentication);
-
-
-        DisconnectedDittoClient disconnectedDittoClient = DittoClients.newInstance(messagingProvider);
-
-        CompletableFuture<DittoClient> dittoClientCompletableFuture = new CompletableFuture<>();
-
-        try {
-            disconnectedDittoClient.connect()
-                    .thenAccept(dittoClient -> {
-                        dittoClientCompletableFuture.complete(dittoClient);
-                        logger.info("DittoClient connected");
-                    })
-                    .exceptionally(error -> {
-                        dittoClientCompletableFuture.completeExceptionally(error);
-                        logger.error("Error connecting to DittoClient", error);
-                        throw new RuntimeException(error);
-                    }).toCompletableFuture().get();
-
-            return dittoClientCompletableFuture.get();
-        } catch (Exception e) {
-            logger.error("Error connecting to DittoClient", e);
-            throw new RuntimeException(e);
         }
     }
 
