@@ -61,7 +61,7 @@ public class ByteToJsonProcessor extends AbstractFunction implements Function<by
             Map<String, String> outgoingMessageProperties = new HashMap<>();
             outgoingMessageProperties.put(DittoSinkRequiredProperties.PROPERTY.propertyName, field.getKey());
             outgoingMessageProperties.put(DittoSinkRequiredProperties.FEATURE_ID.propertyName, featureId);
-            outgoingMessageProperties.put(DittoSinkRequiredProperties.THING_ID.propertyName, context.getCurrentRecord().getProperties().get(ByteToJsonProcessorRequiredProperties.THING_ID.propertyName));
+            outgoingMessageProperties.put(DittoSinkRequiredProperties.THING_ID.propertyName, properties.get(ByteToJsonProcessorRequiredProperties.THING_ID.propertyName));
 
             var future = context.newOutputMessage(context.getOutputTopic(), Schema.STRING)
                     .value(jsonNodeToString(field.getValue()))
