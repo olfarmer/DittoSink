@@ -56,7 +56,12 @@ public class ByteToJsonProcessor extends AbstractFunction implements Function<by
 
         // Each json property will be sent in a new message
         for (Map.Entry<String, JsonNode> field : node.properties()) {
-            String featureId = propertyNameToFeatureId.get(field.getKey());
+            String featureId = propertyNameToFeatureId.get(field.getKey().toLowerCase());
+
+            if (featureId == null) {
+                logger.warn("Field {} could not be matched to any featureId. it will be ignored.", field.getKey());
+                continue;
+            }
 
             Map<String, String> outgoingMessageProperties = new HashMap<>();
             outgoingMessageProperties.put(DittoSinkRequiredProperties.PROPERTY.propertyName, field.getKey());
