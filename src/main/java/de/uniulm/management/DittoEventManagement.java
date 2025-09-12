@@ -1,7 +1,7 @@
 package de.uniulm.management;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import de.uniulm.AbstractFunction;
 import de.uniulm.util.DittoClientUtil;
 import org.apache.commons.io.IOUtils;
@@ -122,7 +122,7 @@ public class DittoEventManagement extends AbstractFunction implements Function<S
             try {
                 String definitionUrl = thing.getDefinition().orElseThrow().getUrl().orElseThrow().toString();
                 //TODO: ONLY FOR DEBUGGING
-                definitionUrl = definitionUrl.replace("nginx:80", "localhost:8080");
+                //definitionUrl = definitionUrl.replace("nginx:80", "localhost:8080");
                 String jsonString = IOUtils.toString(new URL(definitionUrl), StandardCharsets.UTF_8);
                 future.complete(ThingDescription.fromJson(JsonObject.of(jsonString)));
             } catch (Exception e) {
@@ -134,18 +134,22 @@ public class DittoEventManagement extends AbstractFunction implements Function<S
         return future;
     }
 
-    private void CreateMqttSourceForThingIfNotExists(String connectionUrl, ThingId thingId) throws PulsarAdminException, ExecutionException, InterruptedException, URISyntaxException {
+    private void CreateMqttSourceForThingIfNotExists(String connectionUrl, ThingId thingId) throws PulsarAdminException, ExecutionException, InterruptedException, URISyntaxException, JsonProcessingException {
         PulsarAdmin admin = context.getPulsarAdmin();
-        String mqttName = "mqtt-" + thingId;
+        String mqttName = "mqtt-" + thingId.getNamespace() + "-" + thingId.getName();
 
         if (admin.sources().listSources("public", "default").contains(mqttName)) {
             logger.info("Source {} already exists.", mqttName);
             return;
         }
 
-        ObjectNode node = mapper.createObjectNode(); // TODO: mqtt source must support this
-        node.put("thingId", thingId.toString());
-        node.put("propertyFeatureMapping", GetPropertyFeatureMapping(thingId).get());
+        String propertyToFeatureMapping = GetPropertyFeatureMapping(thingId).get();
+
+        logger.info("Created mapping: {}", propertyToFeatureMapping);
+
+        Map<String, String> additionalProperties = new HashMap<>();
+        additionalProperties.put("propertyFeatureMapping", propertyToFeatureMapping);
+        additionalProperties.put("thingId", thingId.toString());
 
         Map<String, Object> customConfig = new HashMap<>();
         URI url = new URI(connectionUrl);
@@ -155,10 +159,7 @@ public class DittoEventManagement extends AbstractFunction implements Function<S
         customConfig.put("tls", "false");
         customConfig.put("websocket", "false");
         customConfig.put("topics", List.of("#"));
-        customConfig.put("additionalProperties", node.toString());
-
-
-
+        customConfig.put("additionalProperties", additionalProperties);
 
         SourceConfig config = new SourceConfig();
         config.setConfigs(customConfig);
@@ -166,10 +167,10 @@ public class DittoEventManagement extends AbstractFunction implements Function<S
         config.setNamespace("default");
         config.setName(mqttName + "-source");
         config.setClassName("de.exxcellent.orchideo.connect.pulsar.MqttSource"); // TODO: extract this to the config
-        config.setArchive("file:///pulsar/connectors/MqttSource-1.0-SNAPSHOT.nar");
-        config.setTopicName(mqttName);
+        config.setArchive("/pulsar/connectors/MqttSource-1.0-SNAPSHOT.nar");
+        config.setTopicName("persistent://public/default/mqtt-" + thingId.getNamespace() + "-" + thingId.getName());
 
-        admin.sources().createSource(config, "file:///pulsar/connectors/MqttSource-1.0-SNAPSHOT.nar");
+        admin.sources().createSourceWithUrl(config, "file:///pulsar/connectors/MqttSource-1.0-SNAPSHOT.nar");
     }
 
     private CompletableFuture<String> GetPropertyFeatureMapping(ThingId thingId) {
@@ -205,7 +206,7 @@ public class DittoEventManagement extends AbstractFunction implements Function<S
         config.setInputs(List.of("mqtt-" + thingId));
         config.setOutput("properties-" + thingId);
 
-        context.getPulsarAdmin().functions().createFunction(config, "file:///pulsar/connectors/ByteToJsonProcessor-1.0-SNAPSHOT.nar");
+        context.getPulsarAdmin().functions().createFunction(config, "file:///pulsar/connectors/DittoSink-0.1.2-BETA.nar");
     }
 
     private List<MqttConnection> GetMqttConnectionsOfThing(ThingDescription description) {
