@@ -96,7 +96,7 @@ public class ByteToJsonProcessor extends AbstractFunction implements Function<by
                 logger.error("Invalid mapping: {}. Aborting.", mapping);
                 return null;
             }
-            propertyNameToFeatureId.put(splitMapping[0], splitMapping[1]);
+            propertyNameToFeatureId.put(splitMapping[0].toLowerCase(), splitMapping[1]);
         }
         return propertyNameToFeatureId;
     }
