@@ -8,6 +8,7 @@ services:
       PULSAR_PREFIX_functionsWorkerEnabled: "true"
       BK_journalSyncData: false
 
+
     ports:
       - "6650:6650"
       - "8082:8080"
@@ -18,6 +19,8 @@ services:
       - ./resources/pulsar/connectors:/pulsar/connectors
       - ./resources/pulsar/functions:/pulsar/functions
       - ./resources/pulsar/logs:/pulsar/logs
+      - ./functions_worker.yml:/pulsar/conf/functions_worker.yml
+      - ./resources/install-functions.sh:/pulsar/install-functions.sh
     command: >
       sh -c "bin/apply-config-from-env.py conf/standalone.conf &&
              bin/pulsar standalone"
@@ -33,18 +36,6 @@ services:
       - "9527:9527"
     depends_on:
       - pulsar
-    networks:
-      - pulsar-net
-  mqtt-external:
-    image: eclipse-mosquitto:2.0
-    container_name: mqtt-external
-    ports:
-      - "1884:1883"   # External port is different for testing
-      - "9002:9001"
-    volumes:
-      - ./resources/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
-      - mosq_data:/mosquitto/data
-      - mosq_log:/mosquitto/log
     networks:
       - pulsar-net
   mongodb:
