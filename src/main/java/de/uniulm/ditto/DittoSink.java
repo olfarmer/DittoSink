@@ -11,6 +11,7 @@ import org.apache.pulsar.io.core.annotations.IOType;
 import org.eclipse.ditto.client.DittoClient;
 import org.eclipse.ditto.client.twin.TwinFeatureHandle;
 import org.eclipse.ditto.json.JsonObject;
+import org.eclipse.ditto.json.JsonValue;
 import org.eclipse.ditto.things.model.ThingId;
 import org.eclipse.ditto.wot.model.DataSchemaType;
 import org.eclipse.ditto.wot.model.ThingDescription;
@@ -53,6 +54,7 @@ public class DittoSink extends AbstractFunction implements Sink<String> {
 
     @Override
     public void write(Record<String> record) throws Exception {
+        logger.info("Received record with value {}", record.getValue());
         Map<String, String> properties = record.getProperties();
         String messageId = record.getMessage().isPresent() ? record.getMessage().get().getMessageId().toString() : "";
 
@@ -80,6 +82,8 @@ public class DittoSink extends AbstractFunction implements Sink<String> {
                 .forId(thingId)
                 .forFeature(featureId);
 
+        logger.info("Updating feature {} of thing {} by putting value {}", featureId, thingId, record.getValue());
+
         CompletionStage<Void> stage = putProperty(handle, property, schema, record.getValue());
 
         stage.whenComplete((a, error) -> {
@@ -87,6 +91,7 @@ public class DittoSink extends AbstractFunction implements Sink<String> {
                 logger.error("Error occurred while trying to update the property {} in Feature {} of Thing {}", property, featureId, thingId, error);
                 record.fail();
             } else {
+                logger.info("Update successful");
                 record.ack();
             }
         });
@@ -97,7 +102,7 @@ public class DittoSink extends AbstractFunction implements Sink<String> {
             case BOOLEAN -> handle.putProperty(property, Boolean.parseBoolean(value));
             case INTEGER -> handle.putProperty(property, Integer.parseInt(value));
             case STRING -> handle.putProperty(property, value);
-            case OBJECT, ARRAY -> handle.putProperty(property, JsonObject.of(value));
+            case OBJECT, ARRAY -> handle.putProperty(property, JsonValue.of(value));
             case NUMBER -> handle.putProperty(property, Double.parseDouble(value));
             case NULL -> {
                 logger.warn("Setting '' value for property {} as property DataSchemaType is NULL", property);
