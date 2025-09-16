@@ -1,0 +1,6 @@
+configs:
+  influxdbUrl: "http://influxdb2:8086"
+  token: "adminToken0=="
+  organization: "docs"
+  bucket: "home"
+  precision: "ms"

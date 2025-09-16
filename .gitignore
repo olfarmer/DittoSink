@@ -37,3 +37,6 @@ build/
 ### Mac OS ###
 .DS_Store
 /example/resources/pulsar/logs/
+/example/resources/influxdb/.env.influxdb2-admin-password
+/example/resources/influxdb/.env.influxdb2-admin-token
+/example/resources/influxdb/.env.influxdb2-admin-username

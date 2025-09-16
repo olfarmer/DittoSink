@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -54,7 +55,10 @@ public class ByteToJsonProcessor extends AbstractFunction implements Function<by
         Map<String, String> propertyNameToFeatureId = getPropertyNameToFeatureId(properties);
         if (propertyNameToFeatureId == null) return null;
 
-        // Each json property will be sent in a new message
+        String thingId = properties.get(ByteToJsonProcessorRequiredProperties.THING_ID.propertyName);
+        Map<String, Object> influxdbFields = new HashMap<>();
+
+        // Each json property will be sent in a new message and added to the influxdb record
         for (Map.Entry<String, JsonNode> field : node.properties()) {
             String featureId = propertyNameToFeatureId.get(field.getKey().toLowerCase());
 
@@ -66,10 +70,12 @@ public class ByteToJsonProcessor extends AbstractFunction implements Function<by
             Map<String, String> outgoingMessageProperties = new HashMap<>();
             outgoingMessageProperties.put(DittoSinkRequiredProperties.PROPERTY.propertyName, field.getKey());
             outgoingMessageProperties.put(DittoSinkRequiredProperties.FEATURE_ID.propertyName, featureId);
-            outgoingMessageProperties.put(DittoSinkRequiredProperties.THING_ID.propertyName, properties.get(ByteToJsonProcessorRequiredProperties.THING_ID.propertyName));
+            outgoingMessageProperties.put(DittoSinkRequiredProperties.THING_ID.propertyName, thingId);
+
+            String stringPayload = jsonNodeToString(field.getValue());
 
             var future = context.newOutputMessage(context.getOutputTopic(), Schema.STRING)
-                    .value(jsonNodeToString(field.getValue()))
+                    .value(stringPayload)
                     .properties(outgoingMessageProperties)
                     .sendAsync();
 
@@ -79,7 +85,16 @@ public class ByteToJsonProcessor extends AbstractFunction implements Function<by
                 context.getCurrentRecord().fail();
                 return null;
             });
+
+            influxdbFields.put(field.getKey(), stringPayload);
         }
+
+        var now = Instant.now();
+        var record = new InfluxdbRecord(thingId, context.getCurrentRecord().getEventTime().orElse(now.toEpochMilli()), new HashMap<>(), influxdbFields);
+
+        context.newOutputMessage("influxdb-record", Schema.JSON(InfluxdbRecord.class))
+                .value(record)
+                .sendAsync();
 
         return null;
     }
