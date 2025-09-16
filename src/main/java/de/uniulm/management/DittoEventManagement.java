@@ -7,7 +7,6 @@ import de.uniulm.util.DittoClientUtil;
 import org.apache.commons.io.IOUtils;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
-import org.apache.pulsar.common.functions.FunctionConfig;
 import org.apache.pulsar.common.io.SourceConfig;
 import org.apache.pulsar.functions.api.Context;
 import org.apache.pulsar.functions.api.Function;
@@ -198,15 +197,6 @@ public class DittoEventManagement extends AbstractFunction implements Function<S
         });
 
         return future;
-    }
-
-    private void CreateByteToJsonProcessor(ThingId thingId) throws PulsarAdminException {
-        FunctionConfig config = new FunctionConfig();
-        config.setClassName("de.uniulm.processor.ByteToJsonProcessor");
-        config.setInputs(List.of("mqtt-" + thingId));
-        config.setOutput("properties-" + thingId);
-
-        context.getPulsarAdmin().functions().createFunction(config, "file:///pulsar/connectors/DittoSink-0.1.2-BETA.nar");
     }
 
     private List<MqttConnection> GetMqttConnectionsOfThing(ThingDescription description) {
