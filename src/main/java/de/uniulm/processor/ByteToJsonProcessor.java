@@ -60,31 +60,7 @@ public class ByteToJsonProcessor extends AbstractFunction implements Function<by
 
         // Each json property will be sent in a new message and added to the influxdb record
         for (Map.Entry<String, JsonNode> field : node.properties()) {
-            String featureId = propertyNameToFeatureId.get(field.getKey().toLowerCase());
-
-            if (featureId == null) {
-                logger.warn("Field {} could not be matched to any featureId. it will be ignored.", field.getKey());
-                continue;
-            }
-
-            Map<String, String> outgoingMessageProperties = new HashMap<>();
-            outgoingMessageProperties.put(DittoSinkRequiredProperties.PROPERTY.propertyName, field.getKey());
-            outgoingMessageProperties.put(DittoSinkRequiredProperties.FEATURE_ID.propertyName, featureId);
-            outgoingMessageProperties.put(DittoSinkRequiredProperties.THING_ID.propertyName, thingId);
-
-            String stringPayload = jsonNodeToString(field.getValue());
-
-            var future = context.newOutputMessage(context.getOutputTopic(), Schema.STRING)
-                    .value(stringPayload)
-                    .properties(outgoingMessageProperties)
-                    .sendAsync();
-
-            future.thenAccept(x -> {
-                context.getCurrentRecord().ack();
-            }).exceptionally(x -> {
-                context.getCurrentRecord().fail();
-                return null;
-            });
+            createAndSendScalarValue(context, field, propertyNameToFeatureId, thingId);
 
             influxdbFields.put(field.getKey(), mapper.convertValue(field.getValue(), Object.class));
         }
@@ -97,6 +73,34 @@ public class ByteToJsonProcessor extends AbstractFunction implements Function<by
                 .sendAsync();
 
         return null;
+    }
+
+    private static void createAndSendScalarValue(Context context, Map.Entry<String, JsonNode> field, Map<String, String> propertyNameToFeatureId, String thingId) throws IOException {
+        String featureId = propertyNameToFeatureId.get(field.getKey().toLowerCase());
+
+        if (featureId == null) {
+            logger.warn("Field {} could not be matched to any featureId. it will be ignored.", field.getKey());
+            return;
+        }
+
+        Map<String, String> outgoingMessageProperties = new HashMap<>();
+        outgoingMessageProperties.put(DittoSinkRequiredProperties.PROPERTY.propertyName, field.getKey());
+        outgoingMessageProperties.put(DittoSinkRequiredProperties.FEATURE_ID.propertyName, featureId);
+        outgoingMessageProperties.put(DittoSinkRequiredProperties.THING_ID.propertyName, thingId);
+
+        String stringPayload = jsonNodeToString(field.getValue());
+
+        var future = context.newOutputMessage(context.getOutputTopic(), Schema.STRING)
+                .value(stringPayload)
+                .properties(outgoingMessageProperties)
+                .sendAsync();
+
+        future.thenAccept(x -> {
+            context.getCurrentRecord().ack();
+        }).exceptionally(x -> {
+            context.getCurrentRecord().fail();
+            return null;
+        });
     }
 
     private static Map<String, String> getPropertyNameToFeatureId(Map<String, String> properties) {
