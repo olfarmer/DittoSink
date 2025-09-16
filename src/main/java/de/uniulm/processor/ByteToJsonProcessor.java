@@ -86,7 +86,7 @@ public class ByteToJsonProcessor extends AbstractFunction implements Function<by
                 return null;
             });
 
-            influxdbFields.put(field.getKey(), stringPayload);
+            influxdbFields.put(field.getKey(), mapper.convertValue(field.getValue(), Object.class));
         }
 
         var now = Instant.now();
