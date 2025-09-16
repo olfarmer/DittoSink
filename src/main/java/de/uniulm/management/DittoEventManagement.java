@@ -11,11 +11,10 @@ import org.apache.pulsar.common.io.SourceConfig;
 import org.apache.pulsar.functions.api.Context;
 import org.apache.pulsar.functions.api.Function;
 import org.eclipse.ditto.client.DittoClient;
+import org.eclipse.ditto.client.changes.ChangeAction;
+import org.eclipse.ditto.client.changes.ThingChange;
 import org.eclipse.ditto.json.JsonObject;
-import org.eclipse.ditto.things.model.Feature;
-import org.eclipse.ditto.things.model.FeatureProperties;
-import org.eclipse.ditto.things.model.Features;
-import org.eclipse.ditto.things.model.ThingId;
+import org.eclipse.ditto.things.model.*;
 import org.eclipse.ditto.wot.model.Events;
 import org.eclipse.ditto.wot.model.ThingDescription;
 import org.slf4j.Logger;
@@ -64,6 +63,10 @@ public class DittoEventManagement extends AbstractFunction implements Function<S
 
         dittoClient = DittoClientUtil.openDittoClient(config.get("dittoUsername").toString(), config.get("dittoPassword").toString(), config.get("websocketEndpoint").toString());
 
+        // Create topology if a new thing is created
+        dittoClient.twin().registerForThingChanges("ditto-event-management", this::handleChange);
+        dittoClient.twin().startConsumption();
+
         if (config.get("thingIds").toString().isEmpty()) {
             return;
         }
@@ -90,10 +93,29 @@ public class DittoEventManagement extends AbstractFunction implements Function<S
         }
     }
 
-    private void CreateTopologyForThing(String stringThingId) throws ExecutionException, InterruptedException {
-        ThingId thingId = ThingId.of(stringThingId);
+    private void handleChange(ThingChange change) {
+        logger.info("Received thing change");
+        try {
+            if (change.getAction() == ChangeAction.CREATED) {
+                Thing thing = change.getThing().orElseThrow();
+                ThingId id = thing.getEntityId().orElseThrow();
 
-        ThingDescription description = GetThingDescription(stringThingId, thingId).get();
+                CreateTopologyForThing(id);
+
+                logger.info("Creating topology for thing {}", id);
+            }
+        } catch (Exception e) {
+            logger.error("Error while processing change", e);
+        }
+
+    }
+
+    private void CreateTopologyForThing(String stringThingId) throws ExecutionException, InterruptedException {
+        CreateTopologyForThing(ThingId.of(stringThingId));
+    }
+
+    private void CreateTopologyForThing(ThingId thingId) throws ExecutionException, InterruptedException {
+        ThingDescription description = GetThingDescription(thingId).get();
 
         List<MqttConnection> connections = GetMqttConnectionsOfThing(description);
 
@@ -104,12 +126,12 @@ public class DittoEventManagement extends AbstractFunction implements Function<S
             try {
                 CreateMqttSourceForThingIfNotExists(connection, thingId);
             } catch (Exception e) {
-                logger.error("Could not create topology for thing {}", stringThingId, e);
+                logger.error("Could not create topology for thing {}", thingId.toString(), e);
             }
         }
     }
 
-    private CompletableFuture<ThingDescription> GetThingDescription(String stringThingId, ThingId thingId) {
+    private CompletableFuture<ThingDescription> GetThingDescription(ThingId thingId) {
         CompletableFuture<ThingDescription> future = new CompletableFuture<>();
 
         dittoClient.twin().forId(thingId).retrieve().whenComplete((thing, ex) -> {
@@ -125,7 +147,7 @@ public class DittoEventManagement extends AbstractFunction implements Function<S
                 String jsonString = IOUtils.toString(new URL(definitionUrl), StandardCharsets.UTF_8);
                 future.complete(ThingDescription.fromJson(JsonObject.of(jsonString)));
             } catch (Exception e) {
-                logger.error("Error creating topology for thing {}", stringThingId, e);
+                logger.error("Error creating topology for thing {}", thingId.toString(), e);
                 future.completeExceptionally(e);
             }
         });
