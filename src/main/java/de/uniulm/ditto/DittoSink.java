@@ -71,16 +71,18 @@ public class DittoSink extends AbstractFunction implements Sink<String> {
         PropertyIdentifier identifier = new PropertyIdentifier(thingId, featureId, property);
         DataSchemaType schema;
 
-        if (schemaMap.containsKey(identifier)) {
-            schema = schemaMap.get(identifier);
-        } else {
-            schema = getFeatureType(thingId, featureId, property);
-        }
-
         TwinFeatureHandle handle = dittoClient
                 .twin()
                 .forId(thingId)
                 .forFeature(featureId);
+
+        if (schemaMap.containsKey(identifier)) {
+            schema = schemaMap.get(identifier);
+        } else {
+            schema = getFeatureType(handle, property);
+        }
+
+
 
         logger.info("Updating feature {} of thing {} by putting value {}", featureId, thingId, record.getValue());
 
@@ -111,18 +113,27 @@ public class DittoSink extends AbstractFunction implements Sink<String> {
         };
     }
 
-    private DataSchemaType getFeatureType(ThingId thingId, String featureId, String propertyName) {
+    private DataSchemaType getFeatureType(TwinFeatureHandle handle, String propertyName) {
 
         CompletableFuture<DataSchemaType> returnValue = new CompletableFuture<>();
 
-        dittoClient.twin().forId(thingId).forFeature(featureId).retrieve().whenComplete((feature, y) -> {
-            String url = feature.getDefinition().orElseThrow().getFirstIdentifier().getUrl().orElseThrow().toString();
-            //url = url.replace("nginx:80","localhost:8080"); // TODO: REMOVE!
+        handle.retrieve().whenComplete((feature, y) -> {
+            String url = feature
+                    .getDefinition()
+                    .orElseThrow()
+                    .getFirstIdentifier()
+                    .getUrl()
+                    .orElseThrow()
+                    .toString();
 
             try {
                 String jsonString = IOUtils.toString(new URL(url), StandardCharsets.UTF_8);
                 var description = ThingDescription.fromJson(JsonObject.of(jsonString));
-                var wotProperty = description.getProperties().orElseThrow().getProperty(propertyName).orElseThrow();
+                var wotProperty = description
+                        .getProperties()
+                        .orElseThrow()
+                        .getProperty(propertyName)
+                        .orElseThrow();
 
                 DataSchemaType schema = wotProperty.getType().orElseThrow();
                 returnValue.complete(schema);
