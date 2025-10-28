@@ -179,7 +179,7 @@ public class DittoEventManagement extends AbstractFunction implements Function<S
         customConfig.put("serverPath", url.getPath());
         customConfig.put("tls", "false");
         customConfig.put("websocket", "false");
-        customConfig.put("topics", List.of("#"));
+        customConfig.put("topics", List.of(mqttName));
         customConfig.put("additionalProperties", additionalProperties);
 
         SourceConfig config = new SourceConfig();
