@@ -1,0 +1,70 @@
+{
+    "@context": [
+        "https://www.w3.org/2022/wot/td/v1.1",
+        {
+          "om2": "http://www.ontology-of-units-of-measure.org/resource/om-2/"
+        }
+    ],
+    "title": "Sensor",
+    "@type": "tm:ThingModel",
+    "id": "urn:uuid:200dae00-5e74-4bcc-b57b-7a157ec58969",
+    "securityDefinitions": {
+        "nosec_sc": {
+            "scheme": "nosec"
+        }
+    },
+    "security": [
+        "nosec_sc"
+    ],
+    "links": [
+        {
+            "rel": "tm:submodel",
+            "href": "http://nginx:80/definitions/febr/features/humidity.jsonld",
+            "type": "application/tm+json",
+            "instanceName": "Humidity"
+        },
+        {
+            "rel": "tm:submodel",
+            "href": "http://nginx:80/definitions/febr/features/pressure.jsonld",
+            "type": "application/tm+json",
+            "instanceName": "Pressure"
+        },
+        {
+            "rel": "tm:submodel",
+            "href": "http://nginx:80/definitions/febr/features/co2ppm.jsonld",
+            "type": "application/tm+json",
+            "instanceName": "Co2ppm"
+        },
+        {
+            "rel": "tm:submodel",
+            "href": "http://nginx:80/definitions/febr/features/metadata.jsonld",
+            "type": "application/tm+json",
+            "instanceName": "Metadata"
+        },
+        {
+            "rel": "tm:submodel",
+            "href": "http://nginx:80/definitions/febr/features/health.jsonld",
+            "type": "application/tm+json",
+            "instanceName": "Health"
+        }
+    ],
+    "properties": {
+
+    },
+    "events": {
+        "measurement": {
+            "data": {
+                "type": "string",
+                "contentEncoding": "base64",
+                "contentType": "application/octet-stream"
+            },
+            "forms": [
+                {
+                    "href": "mqtt://mosquitto:1883/",
+                    "contentType": "application/octet-stream",
+                    "subprotocol": "mqtt"
+                }
+            ]
+        }
+    }
+}

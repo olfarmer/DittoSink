@@ -1,0 +1,50 @@
+{
+    "policyId": "nginx:basic",
+    "entries": {
+        "owner": {
+            "subjects": {
+                "nginx:ditto": {
+                    "type": "nginx basic auth user"
+                }
+            },
+            "resources": {
+                "thing:/": {
+                    "grant": [
+                        "READ","WRITE"
+                    ],
+                    "revoke": []
+                },
+                "policy:/": {
+                    "grant": [
+                        "READ","WRITE"
+                    ],
+                    "revoke": []
+                },
+                "message:/": {
+                    "grant": [
+                        "READ","WRITE"
+                    ],
+                    "revoke": []
+                },
+                "thing:/features:/": {
+                    "grant": [
+                        "READ","WRITE"
+                    ],
+                    "revoke": []
+                },
+                "thing:/features/*/properties:/": {
+                    "grant": [
+                        "READ","WRITE"
+                    ],
+                    "revoke": []
+                },
+                "message:/features": {
+                    "grant": [
+                        "READ","WRITE"
+                    ],
+                    "revoke": []
+                }
+            }
+        }
+    }
+  }

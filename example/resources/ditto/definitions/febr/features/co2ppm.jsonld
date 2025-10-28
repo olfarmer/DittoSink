@@ -1,0 +1,11 @@
+{
+    "@context": "https://www.w3.org/2022/wot/td/v1.1",
+    "title": "Co2ppm",
+    "@type": "tm:ThingModel",
+
+    "properties": {
+        "co2ppm": {
+            "type": "number"
+        }
+    }
+}
