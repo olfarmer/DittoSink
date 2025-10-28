@@ -38,6 +38,16 @@ services:
       - pulsar
     networks:
       - pulsar-net
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: mosquitto
+    ports:
+      - "1884:1883"
+      - "9001:9001"
+    volumes:
+      - ./resources/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - pulsar-net
   mongodb:
     image: docker.io/mongo:7.0
     deploy:
